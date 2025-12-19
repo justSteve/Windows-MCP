@@ -212,7 +212,6 @@ npm install -g @google/gemini-cli
 {
   "theme": "Default",
   ...
-//MCP Server Config
   "mcpServers": {
     "windows-mcp": {
       "command": "uvx",
@@ -246,7 +245,6 @@ npm install -g @qwen-code/qwen-code@latest
 
 ```json
 {
-//MCP Server Config
   "mcpServers": {
     "windows-mcp": {
       "command": "uvx",
@@ -335,6 +333,28 @@ For detailed security information, including:
 
 Please read our [Security Policy](SECURITY.md).
 
+## 📊 Telemetry
+
+Windows-MCP collects anonymized usage data to help improve the tool. No personal information, no tool arguments, no outputs are tracked.
+
+To disable telemetry, add the following to your MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": [
+        "windows-mcp"
+      ],
+      "env": {
+        "ANONYMIZED_TELEMETRY": "false"
+      }
+    }
+  }
+}
+```
+
 ## 📝 Limitations
 
 - Selecting specific sections of the text in a paragraph, as the MCP is relying on a11y tree. (⌛ Working on it.)
@@ -372,3 +392,4 @@ Made with ❤️ by [CursorTouch](https://github.com/CursorTouch)
   url={https://github.com/CursorTouch/Windows-MCP}
 }
 ```
+

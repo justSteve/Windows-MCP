@@ -1,15 +1,20 @@
+from windows_mcp.analytics import PostHogAnalytics, with_analytics
 from live_inspect.watch_cursor import WatchCursor
+from windows_mcp.desktop.service import Desktop
 from contextlib import asynccontextmanager
 from fastmcp.utilities.types import Image
-from windows_mcp.desktop.service import Desktop
 from mcp.types import ToolAnnotations
+from typing import Literal, Optional
 from humancursor import SystemCursor
+from dotenv import load_dotenv
 from textwrap import dedent
 from fastmcp import FastMCP
-from typing import Literal
 import pyautogui as pg
 import asyncio
 import click
+import os
+
+load_dotenv()
 
 pg.FAILSAFE=False
 pg.PAUSE=1.0
@@ -26,6 +31,12 @@ Windows MCP server provides tools to interact directly with the {windows_version
 thus enabling to operate the desktop on the user's behalf.
 ''')
 
+# Initialize analytics at module level to be used in decorators
+if os.getenv("ANONYMIZED_TELEMETRY", "true").lower() == "false":
+    analytics = None
+else:
+    analytics = PostHogAnalytics()
+
 @asynccontextmanager
 async def lifespan(app: FastMCP):
     """Runs initialization code before the server starts and cleanup code after it shuts down."""
@@ -35,6 +46,8 @@ async def lifespan(app: FastMCP):
         yield
     finally:
         watch_cursor.stop()
+        if analytics:
+            await analytics.close()
 
 mcp=FastMCP(name='windows-mcp',instructions=instructions,lifespan=lifespan)
 
@@ -49,6 +62,7 @@ mcp=FastMCP(name='windows-mcp',instructions=instructions,lifespan=lifespan)
         openWorldHint=False
     )
     )
+@with_analytics(analytics, "App-Tool")
 def app_tool(mode:Literal['launch','resize','switch'],name:str|None=None,window_loc:list[int]|None=None,window_size:list[int]|None=None):
     return desktop.app(mode,name,window_loc,window_size)
     
@@ -63,6 +77,7 @@ def app_tool(mode:Literal['launch','resize','switch'],name:str|None=None,window_
         openWorldHint=True
     )
     )
+@with_analytics(analytics, "Powershell-Tool")
 def powershell_tool(command: str) -> str:
     response,status_code=desktop.execute_command(command)
     return f'Response: {response}\nStatus Code: {status_code}'
@@ -78,6 +93,7 @@ def powershell_tool(command: str) -> str:
         openWorldHint=False
     )
     )
+@with_analytics(analytics, "State-Tool")
 def state_tool(use_vision:bool=False,use_dom:bool=False):
     # Calculate scale factor to cap resolution at 1080p (1920x1080)
     max_width, max_height = 1920, 1080
@@ -118,6 +134,7 @@ def state_tool(use_vision:bool=False,use_dom:bool=False):
         openWorldHint=False
     )
     )
+@with_analytics(analytics, "Click-Tool")
 def click_tool(loc:list[int],button:Literal['left','right','middle']='left',clicks:int=1)->str:
     if len(loc) != 2:
         raise ValueError("Location must be a list of exactly 2 integers [x, y]")
@@ -137,6 +154,7 @@ def click_tool(loc:list[int],button:Literal['left','right','middle']='left',clic
         openWorldHint=False
     )
     )
+@with_analytics(analytics, "Type-Tool")
 def type_tool(loc:list[int],text:str,clear:bool=False,press_enter:bool=False)->str:
     if len(loc) != 2:
         raise ValueError("Location must be a list of exactly 2 integers [x, y]")
@@ -155,6 +173,7 @@ def type_tool(loc:list[int],text:str,clear:bool=False,press_enter:bool=False)->s
         openWorldHint=False
     )
     )
+@with_analytics(analytics, "Scroll-Tool")
 def scroll_tool(loc:list[int]=None,type:Literal['horizontal','vertical']='vertical',direction:Literal['up','down','left','right']='down',wheel_times:int=1)->str:
     if loc and len(loc) != 2:
         raise ValueError("Location must be a list of exactly 2 integers [x, y]")
@@ -174,6 +193,7 @@ def scroll_tool(loc:list[int]=None,type:Literal['horizontal','vertical']='vertic
         openWorldHint=False
     )
     )
+@with_analytics(analytics, "Drag-Tool")
 def drag_tool(to_loc:list[int])->str:
     if len(to_loc) != 2:
         raise ValueError("to_loc must be a list of exactly 2 integers [x, y]")
@@ -192,6 +212,7 @@ def drag_tool(to_loc:list[int])->str:
         openWorldHint=False
     )
     )
+@with_analytics(analytics, "Move-Tool")
 def move_tool(to_loc:list[int])->str:
     if len(to_loc) != 2:
         raise ValueError("to_loc must be a list of exactly 2 integers [x, y]")
@@ -210,6 +231,7 @@ def move_tool(to_loc:list[int])->str:
         openWorldHint=False
     )
     )
+@with_analytics(analytics, "Shortcut-Tool")
 def shortcut_tool(shortcut:str):
     desktop.shortcut(shortcut)
     return f"Pressed {shortcut}."
@@ -225,6 +247,7 @@ def shortcut_tool(shortcut:str):
         openWorldHint=False
     )
     )
+@with_analytics(analytics, "Wait-Tool")
 def wait_tool(duration:int)->str:
     pg.sleep(duration)
     return f'Waited for {duration} seconds.'
@@ -240,6 +263,7 @@ def wait_tool(duration:int)->str:
         openWorldHint=True
     )
     )
+@with_analytics(analytics, "Scrape-Tool")
 def scrape_tool(url:str)->str:
     desktop_state=desktop.desktop_state
     tree_state=desktop_state.tree_state
