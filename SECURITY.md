@@ -265,10 +265,12 @@ Windows-MCP does not implement comprehensive audit logging by default. For compl
 
 ### Data Privacy
 
-- Windows-MCP processes data locally on your machine
-- No telemetry or usage data is collected by default
-- Screenshots and state captures remain on your local system
-- Web scraping may expose browsing activity to target websites
+- Windows-MCP collects basic usage data to help improve the MCP server.
+- **No personal information, tool arguments, or tool outputs are tracked.**
+- Telemetry is enabled by default but can be disabled by setting the `ANONYMIZED_TELEMETRY` environment variable to `false` in the MCP server configuration.
+- Windows-MCP processes commands locally on your machine.
+- Screenshots and state captures remain on your local system.
+- Web scraping may expose browsing activity to target websites.
 
 ## Tool Annotations Reference
 

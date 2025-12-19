@@ -37,7 +37,7 @@
     "anonymized_telemetry": {
       "type": "boolean",
       "title": "Anonymized Telemetry",
-      "description": "Windows-MCP collects usage data to help improve the MCP server. No personal information, no tool arguments, no outputs are tracked.",
+      "description": "Windows-MCP collects basic usage data to help improve the MCP server. No personal information, tool arguments, or tool outputs are tracked.",
       "required": false,
       "default": true
     }
