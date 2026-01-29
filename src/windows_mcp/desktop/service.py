@@ -9,7 +9,6 @@ from contextlib import contextmanager
 from typing import Optional,Literal
 from markdownify import markdownify
 from fuzzywuzzy import process
-import windows_mcp.vdm as vdm
 from time import sleep,time
 from psutil import Process
 import win32process

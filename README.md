@@ -320,9 +320,15 @@ Stay updated and join our community:
 
 [![Star History Chart](https://api.star-history.com/svg?repos=CursorTouch/Windows-MCP&type=Date)](https://www.star-history.com/#CursorTouch/Windows-MCP&Date)
 
-## ⚠️Caution
+## 👥 Contributors
 
-This MCP interacts directly with your Windows operating system to perform actions. Use with caution and avoid deploying it in environments where such risks cannot be tolerated.
+Thanks to all the amazing people who have contributed to Windows-MCP! 🎉
+
+<a href="https://github.com/CursorTouch/Windows-MCP/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=CursorTouch/Windows-MCP" />
+</a>
+
+We appreciate every contribution, whether it's code, documentation, bug reports, or feature suggestions. Want to contribute? Check out our [Contributing Guidelines](CONTRIBUTING)!
 
 ## 🔒 Security
 
