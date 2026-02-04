@@ -26,7 +26,7 @@
 mcp-name: io.github.CursorTouch/Windows-MCP
 
 ## Updates
-- v0.6.2: Extended boolean parameter compatibility to the `desktop` module.
+- v0.6.2: Extended boolean parameter compatibility and updated `manifest.json` for `mcpb` compatibility in Claude Desktop (Thanks to bryan-anthropic).
 - v0.6.1: Fixed `Shell` tool output issues and improved boolean parameter compatibility (Thanks to @yakub268).
 - Windows-MCP reached `1M+ Users` in [Claude Desktop Extensiosn](https://claude.ai/directory). 
 - Windows-MCP is now available on [PyPI](https://pypi.org/project/windows-mcp/) (thus supports `uvx windows-mcp`)
