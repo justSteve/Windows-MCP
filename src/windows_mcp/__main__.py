@@ -81,9 +81,12 @@ def app_tool(mode:Literal['launch','resize','switch'],name:str|None=None,window_
     )
     )
 @with_analytics(analytics, "Powershell-Tool")
-def powershell_tool(command: str,timeout:int=10, ctx: Context = None) -> str:
-    response,status_code=desktop.execute_command(command,timeout)
-    return f'Response: {response}\nStatus Code: {status_code}'
+def powershell_tool(command: str,timeout:int=30, ctx: Context = None) -> str:
+    try:
+        response,status_code=desktop.execute_command(command,timeout)
+        return f'Response: {response}\nStatus Code: {status_code}'
+    except Exception as e:
+        return f'Error executing command: {str(e)}\nStatus Code: 1'
 
 @mcp.tool(
     name='Snapshot',
@@ -98,21 +101,24 @@ def powershell_tool(command: str,timeout:int=10, ctx: Context = None) -> str:
     )
 @with_analytics(analytics, "State-Tool")
 def state_tool(use_vision:bool|str=False,use_dom:bool|str=False, ctx: Context = None):
-    use_vision = use_vision is True or (isinstance(use_vision, str) and use_vision.lower() == 'true')
-    use_dom = use_dom is True or (isinstance(use_dom, str) and use_dom.lower() == 'true')
-    
-    # Calculate scale factor to cap resolution at 1080p (1920x1080)
-    scale_width = MAX_IMAGE_WIDTH / screen_size.width if screen_size.width > MAX_IMAGE_WIDTH else 1.0
-    scale_height = MAX_IMAGE_HEIGHT / screen_size.height if screen_size.height > MAX_IMAGE_HEIGHT else 1.0
-    scale = min(scale_width, scale_height)  # Use the smaller scale to ensure both dimensions fit
-    
-    desktop_state=desktop.get_state(use_vision=use_vision,use_dom=use_dom,as_bytes=True,scale=scale)
-    interactive_elements=desktop_state.tree_state.interactive_elements_to_string()
-    scrollable_elements=desktop_state.tree_state.scrollable_elements_to_string()
-    windows=desktop_state.windows_to_string()
-    active_window=desktop_state.active_window_to_string()
-    active_desktop=desktop_state.active_desktop_to_string()
-    all_desktops=desktop_state.desktops_to_string()
+    try:
+        use_vision = use_vision is True or (isinstance(use_vision, str) and use_vision.lower() == 'true')
+        use_dom = use_dom is True or (isinstance(use_dom, str) and use_dom.lower() == 'true')
+        
+        # Calculate scale factor to cap resolution at 1080p (1920x1080)
+        scale_width = MAX_IMAGE_WIDTH / screen_size.width if screen_size.width > MAX_IMAGE_WIDTH else 1.0
+        scale_height = MAX_IMAGE_HEIGHT / screen_size.height if screen_size.height > MAX_IMAGE_HEIGHT else 1.0
+        scale = min(scale_width, scale_height)  # Use the smaller scale to ensure both dimensions fit
+        
+        desktop_state=desktop.get_state(use_vision=use_vision,use_dom=use_dom,as_bytes=True,scale=scale)
+        interactive_elements=desktop_state.tree_state.interactive_elements_to_string()
+        scrollable_elements=desktop_state.tree_state.scrollable_elements_to_string()
+        windows=desktop_state.windows_to_string()
+        active_window=desktop_state.active_window_to_string()
+        active_desktop=desktop_state.active_desktop_to_string()
+        all_desktops=desktop_state.desktops_to_string()
+    except Exception as e:
+        return [f'Error capturing desktop state: {str(e)}. Please try again.']
     return [dedent(f'''
     Active Desktop:
     {active_desktop}
@@ -311,6 +317,63 @@ def multi_edit_tool(locs:list[list], ctx: Context = None)->str:
     desktop.multi_edit(locs)
     elements_str = ', '.join([f"({e[0]},{e[1]}) with text '{e[2]}'" for e in locs])
     return f"Multi-edited elements at: {elements_str}"
+
+
+@mcp.tool(
+    name='FocusWindow',
+    description='Brings a specific window to the foreground and focuses it. Provide either a window title (fuzzy matched) or a window handle. Use Snapshot first to see available windows.',
+    annotations=ToolAnnotations(
+        title="FocusWindow",
+        readOnlyHint=False,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False
+    )
+)
+@with_analytics(analytics, "FocusWindow-Tool")
+def focus_window_tool(title:str|None=None, handle:int|None=None, ctx: Context = None) -> str:
+    try:
+        if handle is None and title is None:
+            return 'Error: Provide either title or handle parameter.'
+        if handle is not None:
+            desktop.bring_window_to_top(handle)
+            return f'Focused window with handle {handle}.'
+        # Fuzzy match by title
+        desktop_state = desktop.get_state()
+        if desktop_state is None:
+            return 'Error: Failed to get desktop state.'
+        from thefuzz import process as fuzz_process
+        window_list = [w for w in [desktop_state.active_window] + desktop_state.windows if w is not None]
+        if not window_list:
+            return 'No windows found on the desktop.'
+        windows = {w.name: w for w in window_list}
+        matched = fuzz_process.extractOne(title, list(windows.keys()), score_cutoff=50)
+        if matched is None:
+            return f'No window matching "{title}" found. Available: {", ".join(windows.keys())}'
+        window_name, _ = matched
+        desktop.bring_window_to_top(windows[window_name].handle)
+        return f'Focused window: {window_name}'
+    except Exception as e:
+        return f'Error focusing window: {str(e)}'
+
+@mcp.tool(
+    name='MinimizeAll',
+    description='Minimizes all windows and shows the desktop (equivalent to Win+D shortcut).',
+    annotations=ToolAnnotations(
+        title="MinimizeAll",
+        readOnlyHint=False,
+        destructiveHint=False,
+        idempotentHint=False,
+        openWorldHint=False
+    )
+)
+@with_analytics(analytics, "MinimizeAll-Tool")
+def minimize_all_tool(ctx: Context = None) -> str:
+    try:
+        pg.hotkey('win', 'd')
+        return 'Minimized all windows (Win+D).'
+    except Exception as e:
+        return f'Error minimizing windows: {str(e)}'
 
 
 @click.command()
