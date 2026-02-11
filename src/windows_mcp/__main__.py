@@ -319,42 +319,6 @@ def multi_edit_tool(locs:list[list], ctx: Context = None)->str:
     return f"Multi-edited elements at: {elements_str}"
 
 
-@mcp.tool(
-    name='FocusWindow',
-    description='Brings a specific window to the foreground and focuses it. Provide either a window title (fuzzy matched) or a window handle. Use Snapshot first to see available windows.',
-    annotations=ToolAnnotations(
-        title="FocusWindow",
-        readOnlyHint=False,
-        destructiveHint=False,
-        idempotentHint=True,
-        openWorldHint=False
-    )
-)
-@with_analytics(analytics, "FocusWindow-Tool")
-def focus_window_tool(title:str|None=None, handle:int|None=None, ctx: Context = None) -> str:
-    try:
-        if handle is None and title is None:
-            return 'Error: Provide either title or handle parameter.'
-        if handle is not None:
-            desktop.bring_window_to_top(handle)
-            return f'Focused window with handle {handle}.'
-        # Fuzzy match by title
-        desktop_state = desktop.get_state()
-        if desktop_state is None:
-            return 'Error: Failed to get desktop state.'
-        from thefuzz import process as fuzz_process
-        window_list = [w for w in [desktop_state.active_window] + desktop_state.windows if w is not None]
-        if not window_list:
-            return 'No windows found on the desktop.'
-        windows = {w.name: w for w in window_list}
-        matched = fuzz_process.extractOne(title, list(windows.keys()), score_cutoff=50)
-        if matched is None:
-            return f'No window matching "{title}" found. Available: {", ".join(windows.keys())}'
-        window_name, _ = matched
-        desktop.bring_window_to_top(windows[window_name].handle)
-        return f'Focused window: {window_name}'
-    except Exception as e:
-        return f'Error focusing window: {str(e)}'
 
 @mcp.tool(
     name='MinimizeAll',
@@ -377,151 +341,125 @@ def minimize_all_tool(ctx: Context = None) -> str:
 
 
 @mcp.tool(
-    name='GetClipboard',
-    description='Reads the current contents of the Windows clipboard. Returns text content if available.',
+    name='Clipboard',
+    description='Manages Windows clipboard operations. Use mode="get" to read current clipboard content, mode="set" to set clipboard text.',
     annotations=ToolAnnotations(
-        title="GetClipboard",
-        readOnlyHint=True,
-        destructiveHint=False,
-        idempotentHint=True,
-        openWorldHint=False
-    )
-)
-@with_analytics(analytics, "GetClipboard-Tool")
-def get_clipboard_tool(ctx: Context = None) -> str:
-    try:
-        import win32clipboard
-        win32clipboard.OpenClipboard()
-        try:
-            if win32clipboard.IsClipboardFormatAvailable(win32clipboard.CF_UNICODETEXT):
-                data = win32clipboard.GetClipboardData(win32clipboard.CF_UNICODETEXT)
-                return f'Clipboard content:\n{data}'
-            else:
-                return 'Clipboard is empty or contains non-text data.'
-        finally:
-            win32clipboard.CloseClipboard()
-    except Exception as e:
-        return f'Error reading clipboard: {str(e)}'
-
-@mcp.tool(
-    name='SetClipboard',
-    description='Sets the Windows clipboard to the specified text content.',
-    annotations=ToolAnnotations(
-        title="SetClipboard",
+        title="Clipboard",
         readOnlyHint=False,
         destructiveHint=False,
         idempotentHint=True,
         openWorldHint=False
     )
 )
-@with_analytics(analytics, "SetClipboard-Tool")
-def set_clipboard_tool(text: str, ctx: Context = None) -> str:
+@with_analytics(analytics, "Clipboard-Tool")
+def clipboard_tool(mode: Literal['get', 'set'], text: str | None = None, ctx: Context = None) -> str:
     try:
         import win32clipboard
-        win32clipboard.OpenClipboard()
-        try:
-            win32clipboard.EmptyClipboard()
-            win32clipboard.SetClipboardText(text, win32clipboard.CF_UNICODETEXT)
-            return f'Clipboard set to: {text[:100]}{"..." if len(text) > 100 else ""}'
-        finally:
-            win32clipboard.CloseClipboard()
-    except Exception as e:
-        return f'Error setting clipboard: {str(e)}'
-
-@mcp.tool(
-    name='ListProcesses',
-    description='Lists running processes on the system. Optionally filter by name (fuzzy match). Returns process name, PID, CPU%, and memory usage. Use sort_by to sort results: "memory" (default), "cpu", or "name".',
-    annotations=ToolAnnotations(
-        title="ListProcesses",
-        readOnlyHint=True,
-        destructiveHint=False,
-        idempotentHint=True,
-        openWorldHint=False
-    )
-)
-@with_analytics(analytics, "ListProcesses-Tool")
-def list_processes_tool(name: str | None = None, sort_by: Literal['memory', 'cpu', 'name'] = 'memory', limit: int = 20, ctx: Context = None) -> str:
-    try:
-        import psutil
-        procs = []
-        for p in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_info']):
+        if mode == 'get':
+            win32clipboard.OpenClipboard()
             try:
-                info = p.info
-                mem_mb = info['memory_info'].rss / (1024 * 1024) if info['memory_info'] else 0
-                procs.append({
-                    'pid': info['pid'],
-                    'name': info['name'] or 'Unknown',
-                    'cpu': info['cpu_percent'] or 0,
-                    'mem_mb': round(mem_mb, 1)
-                })
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                continue
-        if name:
-            from thefuzz import fuzz
-            procs = [p for p in procs if fuzz.partial_ratio(name.lower(), p['name'].lower()) > 60]
-        sort_key = {'memory': lambda x: x['mem_mb'], 'cpu': lambda x: x['cpu'], 'name': lambda x: x['name'].lower()}
-        procs.sort(key=sort_key.get(sort_by, sort_key['memory']), reverse=(sort_by != 'name'))
-        procs = procs[:limit]
-        if not procs:
-            return f'No processes found{f" matching {name}" if name else ""}.'
-        from tabulate import tabulate
-        table = tabulate(
-            [[p['pid'], p['name'], f"{p['cpu']:.1f}%", f"{p['mem_mb']:.1f} MB"] for p in procs],
-            headers=['PID', 'Name', 'CPU%', 'Memory'],
-            tablefmt='simple'
-        )
-        return f'Processes ({len(procs)} shown):\n{table}'
+                if win32clipboard.IsClipboardFormatAvailable(win32clipboard.CF_UNICODETEXT):
+                    data = win32clipboard.GetClipboardData(win32clipboard.CF_UNICODETEXT)
+                    return f'Clipboard content:\n{data}'
+                else:
+                    return 'Clipboard is empty or contains non-text data.'
+            finally:
+                win32clipboard.CloseClipboard()
+        elif mode == 'set':
+            if text is None:
+                return 'Error: text parameter required for set mode.'
+            win32clipboard.OpenClipboard()
+            try:
+                win32clipboard.EmptyClipboard()
+                win32clipboard.SetClipboardText(text, win32clipboard.CF_UNICODETEXT)
+                return f'Clipboard set to: {text[:100]}{"..." if len(text) > 100 else ""}'
+            finally:
+                win32clipboard.CloseClipboard()
+        else:
+            return 'Error: mode must be either "get" or "set".'
     except Exception as e:
-        return f'Error listing processes: {str(e)}'
+        return f'Error managing clipboard: {str(e)}'
 
 @mcp.tool(
-    name='KillProcess',
-    description='Terminates a process by PID or name. Use force=True to force kill (SIGKILL). Use ListProcesses first to find the target PID.',
+    name='ProcessManager',
+    description='Manages system processes. Use mode="list" to list running processes with filtering and sorting options. Use mode="kill" to terminate processes by PID or name.',
     annotations=ToolAnnotations(
-        title="KillProcess",
+        title="ProcessManager",
         readOnlyHint=False,
         destructiveHint=True,
         idempotentHint=False,
         openWorldHint=False
     )
 )
-@with_analytics(analytics, "KillProcess-Tool")
-def kill_process_tool(pid: int | None = None, name: str | None = None, force: bool | str = False, ctx: Context = None) -> str:
+@with_analytics(analytics, "ProcessManager-Tool")
+def process_manager_tool(mode: Literal['list', 'kill'], name: str | None = None, pid: int | None = None, sort_by: Literal['memory', 'cpu', 'name'] = 'memory', limit: int = 20, force: bool | str = False, ctx: Context = None) -> str:
     try:
         import psutil
-        force = force is True or (isinstance(force, str) and force.lower() == 'true')
-        if pid is None and name is None:
-            return 'Error: Provide either pid or name parameter.'
-        killed = []
-        if pid is not None:
-            try:
-                p = psutil.Process(pid)
-                pname = p.name()
-                if force:
-                    p.kill()
-                else:
-                    p.terminate()
-                killed.append(f'{pname} (PID {pid})')
-            except psutil.NoSuchProcess:
-                return f'No process with PID {pid} found.'
-            except psutil.AccessDenied:
-                return f'Access denied to kill PID {pid}. Try running as administrator.'
-        else:
-            for p in psutil.process_iter(['pid', 'name']):
+        if mode == 'list':
+            procs = []
+            for p in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_info']):
                 try:
-                    if p.info['name'] and p.info['name'].lower() == name.lower():
-                        if force:
-                            p.kill()
-                        else:
-                            p.terminate()
-                        killed.append(f"{p.info['name']} (PID {p.info['pid']})")
+                    info = p.info
+                    mem_mb = info['memory_info'].rss / (1024 * 1024) if info['memory_info'] else 0
+                    procs.append({
+                        'pid': info['pid'],
+                        'name': info['name'] or 'Unknown',
+                        'cpu': info['cpu_percent'] or 0,
+                        'mem_mb': round(mem_mb, 1)
+                    })
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
-        if not killed:
-            return f'No process matching "{name}" found or access denied.'
-        return f'{"Force killed" if force else "Terminated"}: {", ".join(killed)}'
+            if name:
+                from thefuzz import fuzz
+                procs = [p for p in procs if fuzz.partial_ratio(name.lower(), p['name'].lower()) > 60]
+            sort_key = {'memory': lambda x: x['mem_mb'], 'cpu': lambda x: x['cpu'], 'name': lambda x: x['name'].lower()}
+            procs.sort(key=sort_key.get(sort_by, sort_key['memory']), reverse=(sort_by != 'name'))
+            procs = procs[:limit]
+            if not procs:
+                return f'No processes found{f" matching {name}" if name else ""}.'
+            from tabulate import tabulate
+            table = tabulate(
+                [[p['pid'], p['name'], f"{p['cpu']:.1f}%", f"{p['mem_mb']:.1f} MB"] for p in procs],
+                headers=['PID', 'Name', 'CPU%', 'Memory'],
+                tablefmt='simple'
+            )
+            return f'Processes ({len(procs)} shown):\n{table}'
+        elif mode == 'kill':
+            force = force is True or (isinstance(force, str) and force.lower() == 'true')
+            if pid is None and name is None:
+                return 'Error: Provide either pid or name parameter for kill mode.'
+            killed = []
+            if pid is not None:
+                try:
+                    p = psutil.Process(pid)
+                    pname = p.name()
+                    if force:
+                        p.kill()
+                    else:
+                        p.terminate()
+                    killed.append(f'{pname} (PID {pid})')
+                except psutil.NoSuchProcess:
+                    return f'No process with PID {pid} found.'
+                except psutil.AccessDenied:
+                    return f'Access denied to kill PID {pid}. Try running as administrator.'
+            else:
+                for p in psutil.process_iter(['pid', 'name']):
+                    try:
+                        if p.info['name'] and p.info['name'].lower() == name.lower():
+                            if force:
+                                p.kill()
+                            else:
+                                p.terminate()
+                            killed.append(f"{p.info['name']} (PID {p.info['pid']})")
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+            if not killed:
+                return f'No process matching "{name}" found or access denied.'
+            return f'{"Force killed" if force else "Terminated"}: {", ".join(killed)}'
+        else:
+            return 'Error: mode must be either "list" or "kill".'
     except Exception as e:
-        return f'Error killing process: {str(e)}'
+        return f'Error managing processes: {str(e)}'
 
 @mcp.tool(
     name='GetSystemInfo',
