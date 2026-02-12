@@ -318,28 +318,6 @@ def multi_edit_tool(locs:list[list], ctx: Context = None)->str:
     elements_str = ', '.join([f"({e[0]},{e[1]}) with text '{e[2]}'" for e in locs])
     return f"Multi-edited elements at: {elements_str}"
 
-
-
-@mcp.tool(
-    name='MinimizeAll',
-    description='Minimizes all windows and shows the desktop (equivalent to Win+D shortcut).',
-    annotations=ToolAnnotations(
-        title="MinimizeAll",
-        readOnlyHint=False,
-        destructiveHint=False,
-        idempotentHint=False,
-        openWorldHint=False
-    )
-)
-@with_analytics(analytics, "MinimizeAll-Tool")
-def minimize_all_tool(ctx: Context = None) -> str:
-    try:
-        pg.hotkey('win', 'd')
-        return 'Minimized all windows (Win+D).'
-    except Exception as e:
-        return f'Error minimizing windows: {str(e)}'
-
-
 @mcp.tool(
     name='Clipboard',
     description='Manages Windows clipboard operations. Use mode="get" to read current clipboard content, mode="set" to set clipboard text.',
@@ -381,18 +359,18 @@ def clipboard_tool(mode: Literal['get', 'set'], text: str | None = None, ctx: Co
         return f'Error managing clipboard: {str(e)}'
 
 @mcp.tool(
-    name='ProcessManager',
+    name='Process',
     description='Manages system processes. Use mode="list" to list running processes with filtering and sorting options. Use mode="kill" to terminate processes by PID or name.',
     annotations=ToolAnnotations(
-        title="ProcessManager",
+        title="Process",
         readOnlyHint=False,
         destructiveHint=True,
         idempotentHint=False,
         openWorldHint=False
     )
 )
-@with_analytics(analytics, "ProcessManager-Tool")
-def process_manager_tool(mode: Literal['list', 'kill'], name: str | None = None, pid: int | None = None, sort_by: Literal['memory', 'cpu', 'name'] = 'memory', limit: int = 20, force: bool | str = False, ctx: Context = None) -> str:
+@with_analytics(analytics, "Process-Tool")
+def process_tool(mode: Literal['list', 'kill'], name: str | None = None, pid: int | None = None, sort_by: Literal['memory', 'cpu', 'name'] = 'memory', limit: int = 20, force: bool | str = False, ctx: Context = None) -> str:
     try:
         import psutil
         if mode == 'list':
@@ -462,18 +440,18 @@ def process_manager_tool(mode: Literal['list', 'kill'], name: str | None = None,
         return f'Error managing processes: {str(e)}'
 
 @mcp.tool(
-    name='GetSystemInfo',
+    name='SystemInfo',
     description='Returns system information including CPU usage, memory usage, disk space, network stats, and uptime. Useful for monitoring system health remotely.',
     annotations=ToolAnnotations(
-        title="GetSystemInfo",
+        title="SystemInfo",
         readOnlyHint=True,
         destructiveHint=False,
         idempotentHint=True,
         openWorldHint=False
     )
 )
-@with_analytics(analytics, "GetSystemInfo-Tool")
-def get_system_info_tool(ctx: Context = None) -> str:
+@with_analytics(analytics, "SystemInfo-Tool")
+def system_info_tool(ctx: Context = None) -> str:
     try:
         import psutil, platform
         from datetime import datetime, timedelta
