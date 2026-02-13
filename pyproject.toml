@@ -14,7 +14,6 @@ dependencies = [
     "click>=8.2.1",
     "comtypes>=1.4.15",
     "fastmcp>=2.14.2",
-    "fuzzywuzzy>=0.18.0",
     "markdownify>=1.1.0",
     "pillow>=11.2.1",
     "posthog>=7.4.0",

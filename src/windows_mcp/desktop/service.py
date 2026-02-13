@@ -9,7 +9,7 @@ from locale import getpreferredencoding
 from contextlib import contextmanager
 from typing import Optional,Literal
 from markdownify import markdownify
-from fuzzywuzzy import process
+from thefuzz import process
 from time import sleep,time
 from psutil import Process
 import win32process
@@ -452,7 +452,15 @@ class Desktop:
             self.type((x,y),text=text,clear=True)
     
     def scrape(self,url:str)->str:
-        response=requests.get(url,timeout=10)
+        try:
+            response=requests.get(url,timeout=10)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            raise ValueError(f"HTTP error for {url}: {e}") from e
+        except requests.exceptions.ConnectionError as e:
+            raise ConnectionError(f"Failed to connect to {url}: {e}") from e
+        except requests.exceptions.Timeout as e:
+            raise TimeoutError(f"Request timed out for {url}: {e}") from e
         html=response.text
         content=markdownify(html=html)
         return content
@@ -786,7 +794,7 @@ class Desktop:
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
         if name:
-            from fuzzywuzzy import fuzz
+            from thefuzz import fuzz
             procs = [p for p in procs if fuzz.partial_ratio(name.lower(), p['name'].lower()) > 60]
         sort_key = {'memory': lambda x: x['mem_mb'], 'cpu': lambda x: x['cpu'], 'name': lambda x: x['name'].lower()}
         procs.sort(key=sort_key.get(sort_by, sort_key['memory']), reverse=(sort_by != 'name'))
