@@ -8,7 +8,6 @@ from threading import Thread, Event
 import comtypes.client
 import comtypes
 import logging
-import weakref
 
 from .event_handlers import (
     FocusChangedEventHandler,

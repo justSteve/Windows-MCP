@@ -2,7 +2,7 @@ from windows_mcp.vdm.core import get_all_desktops, get_current_desktop, is_windo
 from windows_mcp.desktop.views import DesktopState, Window, Browser, Status, Size
 from windows_mcp.desktop.config import PROCESS_PER_MONITOR_DPI_AWARE
 from windows_mcp.tree.views import BoundingBox, TreeElementNode
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from PIL import ImageGrab, ImageFont, ImageDraw, Image
 from windows_mcp.tree.service import Tree
 from locale import getpreferredencoding
@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from typing import Optional,Literal
 from markdownify import markdownify
 from thefuzz import process
-from time import sleep,time
+from time import time
 from psutil import Process
 import win32process
 import subprocess
@@ -34,8 +34,8 @@ try:
 except Exception:  
     ctypes.windll.user32.SetProcessDPIAware()  
 
-import windows_mcp.uia as uia
-import pyautogui as pg
+import windows_mcp.uia as uia  # noqa: E402
+import pyautogui as pg  # noqa: E402
 
 pg.FAILSAFE=False
 pg.PAUSE=1.0
@@ -172,7 +172,7 @@ class Desktop:
         try:
             process=Process(node.ProcessId)
             return Browser.has_process(process.name())
-        except:
+        except Exception:
             return False
     
     def get_default_language(self)->str:
@@ -677,8 +677,8 @@ class Desktop:
     def get_screenshot(self)->Image.Image:
         try:
             return ImageGrab.grab(all_screens=True)
-        except Exception as e:
-            logger.warning(f"Failed to capture virtual screen, using primary screen")
+        except Exception:
+            logger.warning("Failed to capture virtual screen, using primary screen")
             return pg.screenshot()
 
     def get_annotated_screenshot(self, nodes: list[TreeElementNode]) -> Image.Image:
@@ -846,7 +846,8 @@ class Desktop:
         return 'Screen locked.'
 
     def get_system_info(self) -> str:
-        import psutil, platform
+        import psutil
+        import platform
         from datetime import datetime, timedelta
         cpu_pct = psutil.cpu_percent(interval=1)
         cpu_count = psutil.cpu_count()
